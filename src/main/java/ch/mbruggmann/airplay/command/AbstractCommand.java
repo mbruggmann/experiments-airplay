@@ -24,11 +24,14 @@ abstract class AbstractCommand implements Command {
   public Reply doRequest() {
     final HttpRequest request = new HttpRequest(device.getHttpEndpoint() + endpoint, method);
     request.readTimeout(1000).connectTimeout(1000);
+    request.header("X-Apple-Session-ID", device.getSessionId());
     request.userAgent("MediaControl/1.0");
 
     if (this.body.isPresent())
       request.send(this.body.get());
 
-    return Reply.fromRequest(request);
+    Reply reply = Reply.fromRequest(request);
+    request.disconnect();
+    return reply;
   }
 }

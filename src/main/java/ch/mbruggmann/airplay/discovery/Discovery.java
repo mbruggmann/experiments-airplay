@@ -7,6 +7,7 @@ import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceInfo;
 import javax.jmdns.ServiceListener;
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.Set;
 
@@ -15,7 +16,7 @@ import static com.google.common.base.Preconditions.checkState;
 /**
  * Scans for airplay devices on the local network.
  */
-public class Discovery {
+public class Discovery implements Closeable {
   public static final String SERVICE_TYPE_AIRPLAY = "_airplay._tcp.local.";
   private final Set<Device> devices = Sets.newHashSet();
   private JmDNS jmdns;

@@ -6,9 +6,12 @@ import javax.jmdns.ServiceInfo;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.UUID;
 
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.TestCase.assertFalse;
+import static junit.framework.TestCase.assertNotNull;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -51,6 +54,18 @@ public class DeviceTest {
     assertTrue(device2.equals(device1));
     assertFalse(device1.equals(device3));
     assertFalse(device1.equals(device4));
+  }
+
+  @Test
+  public void testSessionId() throws UnknownHostException {
+    Device device1 = new Device("appletv", InetAddress.getByName("192.168.1.4"), 42);
+    Device device2 = new Device("appletv", InetAddress.getByName("192.168.1.5"), 42);
+
+    assertNotEquals(device1.getSessionId(), device2.getSessionId());
+
+    // make sure session id is a valid uuid
+    UUID uuid = UUID.fromString(device1.getSessionId());
+    assertNotNull(uuid);
   }
 
 }

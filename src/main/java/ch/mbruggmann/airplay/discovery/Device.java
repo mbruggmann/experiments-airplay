@@ -2,6 +2,7 @@ package ch.mbruggmann.airplay.discovery;
 
 import javax.jmdns.ServiceInfo;
 import java.net.InetAddress;
+import java.util.UUID;
 
 /**
  * An airplay-capable device on the local network.
@@ -10,6 +11,7 @@ public class Device {
   private final String name;
   private final InetAddress address;
   private final int port;
+  private final UUID sessionId;
 
   static Device fromServiceInfo(ServiceInfo serviceInfo) {
     return new Device(serviceInfo.getName(), serviceInfo.getInet4Addresses()[0], serviceInfo.getPort());
@@ -19,6 +21,7 @@ public class Device {
     this.name = name;
     this.address = address;
     this.port = port;
+    this.sessionId = UUID.randomUUID();
   }
 
   /**
@@ -51,6 +54,14 @@ public class Device {
    */
   public String getHttpEndpoint() {
     return String.format("http://%s:%d", getAddress().getHostAddress(), getPort());
+  }
+
+  /**
+   * Get the session id for this device.
+   * @return the session id for this device.
+   */
+  public String getSessionId() {
+    return sessionId.toString();
   }
 
   @Override

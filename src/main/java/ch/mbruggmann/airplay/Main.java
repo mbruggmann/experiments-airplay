@@ -1,9 +1,6 @@
 package ch.mbruggmann.airplay;
 
-import ch.mbruggmann.airplay.command.PlayCommand;
-import ch.mbruggmann.airplay.command.ProgressCommand;
-import ch.mbruggmann.airplay.command.Reply;
-import ch.mbruggmann.airplay.command.StopCommand;
+import ch.mbruggmann.airplay.command.*;
 import ch.mbruggmann.airplay.discovery.Device;
 import ch.mbruggmann.airplay.discovery.Discovery;
 import com.google.common.collect.Sets;
