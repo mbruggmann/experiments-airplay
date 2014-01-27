@@ -3,6 +3,7 @@ package ch.mbruggmann.airplay;
 import ch.mbruggmann.airplay.command.*;
 import ch.mbruggmann.airplay.discovery.Device;
 import ch.mbruggmann.airplay.discovery.Discovery;
+import ch.mbruggmann.airplay.reverse.ReverseConnection;
 import com.google.common.collect.Sets;
 
 import java.io.IOException;
@@ -34,6 +35,12 @@ public class Main {
     final Device airplayServer = devices.iterator().next();
     System.out.println("connecting to " + airplayServer);
 
+    Reply serverInfo = new ServerInfoCommand(airplayServer).doRequest();
+    System.out.println(serverInfo.getBody());
+
+    final ReverseConnection reverse = new ReverseConnection(airplayServer);
+    reverse.start();
+
     // play the rush trailer
     final String contentUrl = "http://movietrailers.apple.com/movies/universal/rush/rush-tlr3_480p.mov?width=848&height=352";
     PlayCommand playCommand = new PlayCommand(airplayServer, contentUrl);
@@ -54,7 +61,7 @@ public class Main {
       }
 
       try {
-        Thread.sleep(2000);
+        Thread.sleep(1500);
       } catch (Exception e) {
         e.printStackTrace();
       }
@@ -62,6 +69,7 @@ public class Main {
 
     // stop and exit
     new StopCommand(airplayServer).doRequest();
+    reverse.close();
   }
 
 }
