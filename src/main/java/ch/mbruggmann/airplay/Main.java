@@ -1,9 +1,11 @@
 package ch.mbruggmann.airplay;
 
-import ch.mbruggmann.airplay.command.*;
 import ch.mbruggmann.airplay.discovery.Device;
 import ch.mbruggmann.airplay.discovery.Discovery;
-import ch.mbruggmann.airplay.reverse.ReverseConnection;
+import ch.mbruggmann.airplay.player.HLSPlayer;
+import ch.mbruggmann.airplay.player.HLSPlayerException;
+import ch.mbruggmann.airplay.player.HLSPlayerState;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
 import java.io.IOException;
@@ -12,7 +14,7 @@ import java.util.Set;
 public class Main {
   private static final int DISCOVERY_TIMEOUT_MS = 30*1000;
 
-  public static void main(String... args) throws IOException, InterruptedException {
+  public static void main(String... args) throws IOException, InterruptedException, HLSPlayerException {
     Discovery discovery = new Discovery();
     discovery.start();
 
@@ -35,41 +37,22 @@ public class Main {
     final Device airplayServer = devices.iterator().next();
     System.out.println("connecting to " + airplayServer);
 
-    Reply serverInfo = new ServerInfoCommand(airplayServer).doRequest();
-    System.out.println(serverInfo.getBody());
+    final String contentUrl = "http://devimages.apple.com/iphone/samples/bipbop/gear1/prog_index.m3u8";
+    HLSPlayer player = new HLSPlayer(airplayServer);
+    player.play(contentUrl);
 
-    final ReverseConnection reverse = new ReverseConnection(airplayServer);
-    reverse.start();
+    Thread.sleep(10000);
 
-    // play the rush trailer
-    final String contentUrl = "http://movietrailers.apple.com/movies/universal/rush/rush-tlr3_480p.mov?width=848&height=352";
-    PlayCommand playCommand = new PlayCommand(airplayServer, contentUrl);
-    Reply reply = playCommand.doRequest();
-    System.out.println("play response: " + reply.getStatusCode());
+    final String newContentUrl = "http://movietrailers.apple.com/movies/universal/rush/rush-tlr3_480p.mov?width=848&height=352";
+    player.play(newContentUrl);
 
-    // monitor progress
-    ProgressCommand.ProgressReply progressReply = new ProgressCommand(airplayServer).doRequest();
-    boolean started = false;
-    while (!started || progressReply.getRemaining() > 0) {
-      try {
-        progressReply = new ProgressCommand(airplayServer).doRequest();
-        System.out.println(String.format("dur %f, pos %f", progressReply.getDuration(), progressReply.getPosition()));
-
-        started = started || progressReply.getPosition() > 0;
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-
-      try {
-        Thread.sleep(1500);
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
+    ImmutableSet<HLSPlayerState> stopStates = ImmutableSet.of(HLSPlayerState.STOPPED, HLSPlayerState.ERROR);
+    while (! stopStates.contains(player.getState())) {
+      Thread.sleep(1000);
     }
 
-    // stop and exit
-    new StopCommand(airplayServer).doRequest();
-    reverse.close();
+    System.out.println("player stopped in state " + player.getState());
+    player.close();
   }
 
 }
