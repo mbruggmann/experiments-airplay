@@ -4,12 +4,12 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 
 import javax.jmdns.JmDNS;
-import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceInfo;
-import javax.jmdns.ServiceListener;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -18,20 +18,22 @@ import static com.google.common.base.Preconditions.checkState;
  */
 public class Discovery implements Closeable {
   public static final String SERVICE_TYPE_AIRPLAY = "_airplay._tcp.local.";
+  private final ExecutorService executor = Executors.newSingleThreadExecutor();
   private final Set<Device> devices = Sets.newHashSet();
   private JmDNS jmdns;
+  private boolean stopping = false;
 
   /**
    * Start scanning for airplay devices.
    */
   public void start() {
     try {
-      JmDNS jmdns = JmDNS.create();
-      jmdns.addServiceListener(SERVICE_TYPE_AIRPLAY, serviceListener);
-      this.jmdns = jmdns;
+      this.jmdns = JmDNS.create();
     } catch (IOException e) {
       throw new RuntimeException("can't create jmdns", e);
     }
+    stopping = false;
+    executor.submit(periodicUpdater);
   }
 
   /**
@@ -40,11 +42,12 @@ public class Discovery implements Closeable {
   public void close() {
     checkState(jmdns != null, "not started");
     try {
-      jmdns.removeServiceListener(SERVICE_TYPE_AIRPLAY, serviceListener);
       jmdns.close();
     } catch (IOException e) {
       // ignore
     }
+    stopping = true;
+    executor.shutdownNow();
     jmdns = null;
   }
 
@@ -52,27 +55,36 @@ public class Discovery implements Closeable {
    * Get a snapshot of all currently known devices.
    * @return all known devices as of now.
    */
-  public Set<Device> getDevices() {
+  public synchronized Set<Device> getDevices() {
     return ImmutableSet.copyOf(devices);
   }
 
-  private final ServiceListener serviceListener = new ServiceListener() {
-    @Override
-    public void serviceAdded(ServiceEvent event) {
-      ServiceInfo serviceInfo = event.getDNS().getServiceInfo(event.getType(), event.getName());
-      Device device = Device.fromServiceInfo(serviceInfo);
-      devices.add(device);
-    }
+  private synchronized void addDeviceForServiceInfo(ServiceInfo info) {
+    Device device = Device.fromServiceInfo(info);
+    devices.add(device);
+  }
+
+  //TODO implement this
+  private synchronized void removeDeviceForServiceInfo(ServiceInfo info) {
+    Device device = Device.fromServiceInfo(info);
+    devices.remove(device);
+  }
+
+  private final Runnable periodicUpdater = new Runnable() {
+    private final long[] SCAN_TIMES = new long[]{
+        4000, 6000, 8000, 16000, 8000, 6000, 4000
+    };
+    private int currentScanTime = 0;
 
     @Override
-    public void serviceRemoved(ServiceEvent event) {
-      ServiceInfo serviceInfo = jmdns.getServiceInfo(SERVICE_TYPE_AIRPLAY, event.getName());
-      Device device = Device.fromServiceInfo(serviceInfo);
-      devices.remove(device);
-    }
-
-    @Override
-    public void serviceResolved(ServiceEvent event) {
+    public void run() {
+      while (!stopping) {
+        long scanTime = SCAN_TIMES[currentScanTime++ % SCAN_TIMES.length];
+        ServiceInfo[] services = jmdns.list(SERVICE_TYPE_AIRPLAY, scanTime);
+        for (ServiceInfo service: services) {
+          addDeviceForServiceInfo(service);
+        }
+      }
     }
   };
 
