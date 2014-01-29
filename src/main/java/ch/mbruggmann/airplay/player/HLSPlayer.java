@@ -116,6 +116,8 @@ public class HLSPlayer implements AutoCloseable {
         if (duration == 0 && getState() == HLSPlayerState.PLAYING) {
           zeroDurationRuns++;
           if (zeroDurationRuns >= ZERO_DURATION_RUNS_FOR_ERROR) {
+            Reply errorLog = new ErrorLogCommand(device).doRequest();
+            if (errorLog.getStatusCode() == 200) System.out.println(errorLog.getBody());
             zeroDurationRuns = 0;
             setState(HLSPlayerState.ERROR);
           }
